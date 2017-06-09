@@ -8,6 +8,7 @@ using System.Web.Http.Description;
 using Microsoft.Bot.Connector;
 using Newtonsoft.Json;
 using Microsoft.Bot.Builder.Dialogs;
+using System.Threading;
 
 namespace TestBot
 {
@@ -63,46 +64,54 @@ namespace TestBot
     }
 }
 
+[Serializable]
 public class EchoDialog : IDialog<object>
 {
     protected int count = 1;
 
     public async Task StartAsync(IDialogContext context)
     {
-        context.Wait(MessageReceivedAsync);
+        // Root dialog initiates and waits for the next message from the user. 
+        // When a message arrives, call MessageReceivedAsync.
+        context.Wait(this.MessageReceivedAsync);
     }
 
-    public virtual async Task MessageReceivedAsync(IDialogContext context, IAwaitable<IMessageActivity> argument)
+    public virtual async Task MessageReceivedAsync(IDialogContext context, IAwaitable<IMessageActivity> result)
     {
-        var message = await argument;
-        if (message.Text == "reset")
+        var message = await result; // We've got a message!
+        if (message.Text.ToLower().Contains("order"))
         {
-            PromptDialog.Confirm(
-                context,
-                AfterResetAsync,
-                "Are you sure you want to reset the count?",
-                "Didn't get that!",
-                promptStyle: PromptStyle.None);
+            // User said 'order', so invoke the New Order Dialog and wait for it to finish.
+            // Then, call ResumeAfterNewOrderDialog.
+            await context.Forward(new NewOrderDialog(), this.ResumeAfterNewOrderDialog, message, CancellationToken.None);
         }
-        else
-        {
-            await context.PostAsync($"{this.count++}: You said {message.Text}");
-            context.Wait(MessageReceivedAsync);
-        }
+        // User typed something else; for simplicity, ignore this input and wait for the next message.
+        context.Wait(this.MessageReceivedAsync);
     }
 
-    public async Task AfterResetAsync(IDialogContext context, IAwaitable<bool> argument)
+    /*private Task ResumeAfterNewOrderDialog(IDialogContext context, IAwaitable<object> result)
     {
-        var confirm = await argument;
-        if (confirm)
-        {
-            this.count = 1;
-            await context.PostAsync("Reset count.");
-        }
-        else
-        {
-            await context.PostAsync("Did not reset count.");
-        }
-        context.Wait(MessageReceivedAsync);
+        throw new NotImplementedException();
+    }*/
+
+    private async Task ResumeAfterNewOrderDialog(IDialogContext context, IAwaitable<string> result)
+    {
+        // Store the value that NewOrderDialog returned. 
+        // (At this point, new order dialog has finished and returned some value to use within the root dialog.)
+        var resultFromNewOrder = await result;
+
+        await context.PostAsync($"New order dialog just told me this: {resultFromNewOrder}");
+
+        // Again, wait for the next message from the user.
+        context.Wait(this.MessageReceivedAsync);
+    }
+
+}
+
+internal class NewOrderDialog : IDialog<object>
+{
+    public Task StartAsync(IDialogContext context)
+    {
+        throw new NotImplementedException();
     }
 }
