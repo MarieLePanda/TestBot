@@ -83,8 +83,8 @@ public class EchoDialog : IDialog<object>
         {
             // User said 'order', so invoke the New Order Dialog and wait for it to finish.
             // Then, call ResumeAfterNewOrderDialog.
-            context.Call(new NewOrderDialog(), this.ResumeAfterNewOrderDialog);
-            await context.Forward(new NewOrderDialog(), this.ResumeAfterNewOrderDialog, message, CancellationToken.None);
+            context.Call(new NewOrderDialog(), ResumeAfterNewOrderDialog);    
+        //await context.Forward(new NewOrderDialog(), this.ResumeAfterNewOrderDialog, message, CancellationToken.None);
         }
         // User typed something else; for simplicity, ignore this input and wait for the next message.
         context.Wait(this.MessageReceivedAsync);
@@ -95,7 +95,7 @@ public class EchoDialog : IDialog<object>
         throw new NotImplementedException();
     }*/
 
-    private async Task ResumeAfterNewOrderDialog(IDialogContext context, IAwaitable<string> result)
+    private async Task ResumeAfterNewOrderDialog(IDialogContext context, IAwaitable<object> result)
     {
         // Store the value that NewOrderDialog returned. 
         // (At this point, new order dialog has finished and returned some value to use within the root dialog.)
@@ -109,11 +109,26 @@ public class EchoDialog : IDialog<object>
 
 }
 
-internal class NewOrderDialog : IDialog<object>
+public class NewOrderDialog : IDialog<object>
 {
     public async Task StartAsync(IDialogContext context)
     {
-        await context.PostAsync("Welcome to the nw order!");
-        context.Done("");
+        await context.PostAsync("What is your order ?");
+        context.Wait(this.MessageReceivedAsync);
     }
+
+    public virtual async Task MessageReceivedAsync(IDialogContext context, IAwaitable<IMessageActivity> result)
+    {
+
+        var message = await result; // We've got a message!
+        if (message.Text.Equals("pc"))
+        {
+            context.Done("you want a PC !");
+        }else
+        {
+            await context.PostAsync("I don't understand your order sorry...");
+            context.Wait(this.MessageReceivedAsync);
+        }
+    }
+
 }
