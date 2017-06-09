@@ -83,6 +83,7 @@ public class EchoDialog : IDialog<object>
         {
             // User said 'order', so invoke the New Order Dialog and wait for it to finish.
             // Then, call ResumeAfterNewOrderDialog.
+            context.Call(new NewOrderDialog(), this.ResumeAfterNewOrderDialog);
             await context.Forward(new NewOrderDialog(), this.ResumeAfterNewOrderDialog, message, CancellationToken.None);
         }
         // User typed something else; for simplicity, ignore this input and wait for the next message.
@@ -110,8 +111,9 @@ public class EchoDialog : IDialog<object>
 
 internal class NewOrderDialog : IDialog<object>
 {
-    public Task StartAsync(IDialogContext context)
+    public async Task StartAsync(IDialogContext context)
     {
-        throw new NotImplementedException();
+        await context.PostAsync("Welcome to the nw order!");
+        context.Done("");
     }
 }
